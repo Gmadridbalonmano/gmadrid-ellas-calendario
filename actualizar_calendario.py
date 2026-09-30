@@ -105,6 +105,7 @@ def norm(text):
     """
     Normaliza texto para comparar nombres de equipos.
     """
+
     return re.sub(
         r"\s+",
         " ",
@@ -118,8 +119,8 @@ def norm(text):
 
 def choose_select(frame, wanted_variants):
     """
-    Busca la opción correspondiente dentro de los desplegables
-    de iSquad y la selecciona.
+    Busca la opción correspondiente dentro de los
+    desplegables de iSquad y la selecciona.
     """
 
     selects = frame.locator("select")
@@ -173,8 +174,8 @@ def choose_select(frame, wanted_variants):
 
 def get_isquad_frame(page):
     """
-    Abre la página de FMBM y encuentra el iframe
-    que contiene iSquad.
+    Abre la página de FMBM y encuentra
+    el iframe que contiene iSquad.
     """
 
     page.goto(
@@ -191,9 +192,11 @@ def get_isquad_frame(page):
             "resultadosbalonmano.isquad.es"
             in frame.url
         ):
+
             print(
                 "[INFO] iframe iSquad encontrado:"
             )
+
             print(frame.url)
 
             return frame
@@ -246,7 +249,8 @@ def configure_competition(frame):
 
 def get_all_rounds(frame):
     """
-    Intenta pulsar 'Todas' para mostrar todas las jornadas.
+    Intenta pulsar 'Todas' para mostrar
+    todas las jornadas.
     """
 
     try:
@@ -279,10 +283,11 @@ def get_all_rounds(frame):
 
 def extract_match_blocks(frame):
     """
-    Busca elementos HTML que contengan el nombre de GMadrid.
+    Busca elementos HTML que contengan
+    el nombre de GMadrid.
 
-    Subimos por sus elementos padre hasta encontrar el bloque
-    que también contiene una fecha y una hora.
+    Sube por sus elementos padre hasta encontrar
+    el bloque que también contiene fecha y hora.
     """
 
     team_nodes = frame.get_by_text(
@@ -311,9 +316,6 @@ def extract_match_blocks(frame):
 
         node = team_nodes.nth(i)
 
-        # Probamos varios niveles de padres.
-        # Esto nos permite adaptarnos a si iSquad usa
-        # tablas, divs o contenedores responsive.
         for level in range(1, 8):
 
             xpath = (
@@ -349,9 +351,6 @@ def extract_match_blocks(frame):
             ):
                 continue
 
-            # Evitamos duplicados:
-            # cuando encontramos un bloque suficientemente
-            # pequeño y útil, dejamos de subir.
             if text not in seen_texts:
 
                 seen_texts.add(text)
@@ -368,10 +367,15 @@ def extract_match_blocks(frame):
     return blocks
 
 
-def identify_match(block, jornada, base_date, rival):
+def identify_match(
+    block,
+    jornada,
+    base_date,
+    rival,
+):
     """
-    Comprueba si un bloque corresponde al partido
-    de una jornada concreta.
+    Comprueba si un bloque corresponde
+    al partido de una jornada concreta.
     """
 
     normalized = norm(block)
@@ -416,7 +420,8 @@ def identify_match(block, jornada, base_date, rival):
         ).days
     )
 
-    # Permitimos reprogramaciones.
+    # Permitimos reprogramaciones
+    # de hasta 45 días.
     if difference > 45:
         return None
 
@@ -425,11 +430,10 @@ def identify_match(block, jornada, base_date, rival):
 
 def extract_place(block):
     """
-    Intenta extraer el pabellón del bloque del partido.
+    Intenta extraer el pabellón del
+    bloque del partido.
     """
 
-    # Quitamos la parte anterior a la fecha/hora.
-    # El pabellón normalmente aparece después.
     date_time_match = re.search(
         r"\d{2}/\d{2}/20(?:26|27)"
         r"\s*"
@@ -444,8 +448,6 @@ def extract_place(block):
         date_time_match.end():
     ].strip()
 
-    # Quitamos textos de estado y botones que aparecen
-    # después del pabellón.
     stop_words = [
         "Pendiente",
         "Finalizado",
@@ -471,6 +473,7 @@ def extract_place(block):
         )
 
         if match:
+
             cut_position = min(
                 cut_position,
                 match.start(),
@@ -480,8 +483,6 @@ def extract_place(block):
         :cut_position
     ].strip(" -|")
 
-    # Si por la estructura HTML ha entrado demasiado texto,
-    # no queremos meter basura en LOCATION.
     if len(place) > 200:
         place = ""
 
@@ -502,7 +503,10 @@ def extract_status(block):
 
     for status in statuses:
 
-        if status.upper() in block.upper():
+        if (
+            status.upper()
+            in block.upper()
+        ):
             return status
 
     return ""
@@ -580,6 +584,10 @@ def extract_matches(frame):
 # ============================================================
 
 def escape_ics(text):
+    """
+    Escapa caracteres especiales
+    del formato ICS.
+    """
 
     return (
         str(text)
@@ -591,6 +599,13 @@ def escape_ics(text):
 
 
 def generate_calendar(live):
+    """
+    Genera el calendario manteniendo
+    un UID fijo para cada jornada.
+
+    Así Google Calendar entiende que
+    se está actualizando el mismo evento.
+    """
 
     timestamp = (
         datetime.now(TZ)
@@ -668,7 +683,10 @@ def generate_calendar(live):
             "desde FMBM/iSquad."
         )
 
-        if info and info.get("status"):
+        if (
+            info
+            and info.get("status")
+        ):
 
             description += (
                 " Estado: "
@@ -687,15 +705,16 @@ def generate_calendar(live):
             ),
         ]
 
-        # ----------------------------------------
-        # HORARIO PUBLICADO
-        # ----------------------------------------
+        # ====================================================
+        # PARTIDO CON HORARIO PUBLICADO
+        # ====================================================
 
         if info:
 
             start = info["dt"]
 
-            # Reservamos 1 h 30 min
+            # Bloqueamos 1 h 30 min
+            # en Google Calendar.
             end = (
                 start
                 + timedelta(
@@ -731,9 +750,15 @@ def generate_calendar(live):
                     )
                 )
 
+            # Si la Federación marca un
+            # partido como suspendido,
+            # Google Calendar lo recibe
+            # como cancelado.
             if (
-                info.get("status", "")
-                .lower()
+                info.get(
+                    "status",
+                    "",
+                ).lower()
                 == "suspendido"
             ):
 
@@ -751,9 +776,9 @@ def generate_calendar(live):
                 "TRANSP:OPAQUE"
             )
 
-        # ----------------------------------------
-        # TODAVÍA SIN HORARIO
-        # ----------------------------------------
+        # ====================================================
+        # PARTIDO SIN HORARIO PUBLICADO
+        # ====================================================
 
         else:
 
@@ -844,43 +869,51 @@ def main():
             browser.close()
 
         # ====================================================
-        # TEST DE LA JORNADA 1
+        # CONTROL DE SEGURIDAD
+        # ====================================================
+        #
+        # La J1 ya tiene horario publicado.
+        # Por tanto, si el robot deja de encontrarla,
+        # significa probablemente que la web de iSquad
+        # ha cambiado.
+        #
+        # En ese caso NO sobrescribimos el calendario.
+        #
+        # Importante:
+        # NO comprobamos que sean las 20:00.
+        # Si la Federación cambia la hora,
+        # queremos actualizarla automáticamente.
         # ====================================================
 
         if 1 not in live:
 
             print(
-                "[ERROR] TEST J1: "
-                "no se localizó "
-                "GMadrid-Pinto "
-                "con fecha y hora.",
+                "[ERROR] CONTROL DE SEGURIDAD: "
+                "no se ha podido leer la J1 "
+                "de GMadrid eLLas.",
+                file=sys.stderr,
+            )
+
+            print(
+                "[ERROR] No se modificará "
+                "el calendario.",
                 file=sys.stderr,
             )
 
             return 2
 
         print(
-            "[TEST J1 OK] "
+            "[CONTROL OK] J1 localizada:"
+        )
+
+        print(
+            f"[CONTROL OK] "
             f"{live[1]['dt']:%d/%m/%Y %H:%M}"
         )
 
-        # Durante esta prueba queremos comprobar
-        # específicamente el horario publicado actualmente.
-        if (
-            live[1]["dt"].strftime(
-                "%H:%M"
-            )
-            != "20:00"
-        ):
-
-            print(
-                "[ERROR] J1 encontrada, "
-                "pero la hora detectada "
-                "no es 20:00.",
-                file=sys.stderr,
-            )
-
-            return 3
+        # ====================================================
+        # GENERAR CALENDARIO
+        # ====================================================
 
         calendar = generate_calendar(
             live
@@ -900,6 +933,11 @@ def main():
             ICS_FILE
         )
 
+        print(
+            "[DONE] Partidos con horario "
+            f"publicado: {len(live)}"
+        )
+
         return 0
 
     except Exception as error:
@@ -914,6 +952,7 @@ def main():
 
 
 if __name__ == "__main__":
+
     raise SystemExit(
         main()
     )
