@@ -1,0 +1,41 @@
+name: Actualizar calendario GMadrid eLLas
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 0,6,12,18 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: actualizar-calendario
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Consultar FMBM/iSquad y generar ICS
+        run: python actualizar_calendario.py
+
+      - name: Guardar cambios si los hay
+        run: |
+          if git diff --quiet -- GMadrid_eLLas_2026-2027_Google_Calendar.ics; then
+            echo "No hay cambios en el calendario."
+            exit 0
+          fi
+          git config user.name "gmadrid-calendar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add GMadrid_eLLas_2026-2027_Google_Calendar.ics
+          git commit -m "Actualiza horarios GMadrid eLLas"
+          git push
