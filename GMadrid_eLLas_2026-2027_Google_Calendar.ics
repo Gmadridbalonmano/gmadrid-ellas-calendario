@@ -1,0 +1,155 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//OpenAI//GMadrid eLLas 2026-2027//ES
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:GMadrid eLLas 2026-2027
+X-WR-TIMEZONE:Europe/Madrid
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j1@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261004
+DTEND;VALUE=DATE:20261005
+SUMMARY:🤾 GMadrid eLLas - GRUPO EGIDO BM PINTO 2NF
+DESCRIPTION:Jornada 1 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+LOCATION:Colegio Santa Joaquina de Vedruna\, Travesía de Costa Brava 3\, 28034 Madrid
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j2@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261018
+DTEND;VALUE=DATE:20261019
+SUMMARY:🤾 CB PARLA 2NF - GMadrid eLLas
+DESCRIPTION:Jornada 2 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j3@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261025
+DTEND;VALUE=DATE:20261026
+SUMMARY:🤾 GMadrid eLLas - BALONMANO LEGANES 2NF
+DESCRIPTION:Jornada 3 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+LOCATION:Colegio Santa Joaquina de Vedruna\, Travesía de Costa Brava 3\, 28034 Madrid
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j4@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261108
+DTEND;VALUE=DATE:20261109
+SUMMARY:🤾 CLUB BALONMANO ALCOBENDAS 2NF - GMadrid eLLas
+DESCRIPTION:Jornada 4 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j5@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261115
+DTEND;VALUE=DATE:20261116
+SUMMARY:🤾 CAB CONCE 1NF - GMadrid eLLas
+DESCRIPTION:Jornada 5 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j6@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261122
+DTEND;VALUE=DATE:20261123
+SUMMARY:🤾 GMadrid eLLas - AD BALONMANO VILLAVICIOSA DE ODON 2NF
+DESCRIPTION:Jornada 6 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+LOCATION:Colegio Santa Joaquina de Vedruna\, Travesía de Costa Brava 3\, 28034 Madrid
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j7@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261129
+DTEND;VALUE=DATE:20261130
+SUMMARY:🤾 CORAZONISTAS 2NF - GMadrid eLLas
+DESCRIPTION:Jornada 7 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j8@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20261213
+DTEND;VALUE=DATE:20261214
+SUMMARY:🤾 GRUPO EGIDO BM PINTO 2NF - GMadrid eLLas
+DESCRIPTION:Jornada 8 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j9@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20270117
+DTEND;VALUE=DATE:20270118
+SUMMARY:🤾 GMadrid eLLas - CB PARLA 2NF
+DESCRIPTION:Jornada 9 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+LOCATION:Colegio Santa Joaquina de Vedruna\, Travesía de Costa Brava 3\, 28034 Madrid
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j10@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20270124
+DTEND;VALUE=DATE:20270125
+SUMMARY:🤾 BALONMANO LEGANES 2NF - GMadrid eLLas
+DESCRIPTION:Jornada 10 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j11@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20270131
+DTEND;VALUE=DATE:20270201
+SUMMARY:🤾 GMadrid eLLas - CLUB BALONMANO ALCOBENDAS 2NF
+DESCRIPTION:Jornada 11 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+LOCATION:Colegio Santa Joaquina de Vedruna\, Travesía de Costa Brava 3\, 28034 Madrid
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j12@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20270207
+DTEND;VALUE=DATE:20270208
+SUMMARY:🤾 GMadrid eLLas - CAB CONCE 1NF
+DESCRIPTION:Jornada 12 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+LOCATION:Colegio Santa Joaquina de Vedruna\, Travesía de Costa Brava 3\, 28034 Madrid
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j13@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20270214
+DTEND;VALUE=DATE:20270215
+SUMMARY:🤾 AD BALONMANO VILLAVICIOSA DE ODON 2NF - GMadrid eLLas
+DESCRIPTION:Jornada 13 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+BEGIN:VEVENT
+UID:gmadrid-ellas-2627-j14@openai.local
+DTSTAMP:20260930T133400Z
+DTSTART;VALUE=DATE:20270221
+DTEND;VALUE=DATE:20270222
+SUMMARY:🤾 GMadrid eLLas - CORAZONISTAS 2NF
+DESCRIPTION:Jornada 14 - Segunda Nacional Femenina 2026/27. Fecha base según calendario oficial FMBM. Hora y pabellón sujetos a publicación/confirmación federativa. Fuente de horarios: https://www.fmbalonmano.com/resultados-clasificaciones
+LOCATION:Colegio Santa Joaquina de Vedruna\, Travesía de Costa Brava 3\, 28034 Madrid
+STATUS:TENTATIVE
+TRANSP:TRANSPARENT
+END:VEVENT
+END:VCALENDAR
