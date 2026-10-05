@@ -35,7 +35,6 @@ TZ = ZoneInfo("Europe/Madrid")
 # IDS DESCUBIERTOS EN ISQUAD
 # ============================================================
 
-SEASON_ID = "2627"
 CHAMPIONSHIP_ID = "3097"
 COMPETITION_ID = "211913"
 PHASE_ID = "1040390"
@@ -179,7 +178,6 @@ def get_isquad_frame_from_fmbm(page):
         timeout=60000,
     )
 
-    # Esperamos hasta 30 segundos al iframe.
     for attempt in range(30):
 
         for frame in page.frames:
@@ -211,15 +209,14 @@ def get_isquad_frame_from_fmbm(page):
 
     print(
         "[PLAN A FALLIDO] "
-        "FMBM no ha cargado el iframe "
-        "de iSquad en 30 segundos."
+        "No aparece el iframe."
     )
 
     return None
 
 
 # ============================================================
-# NAVEGACION POR LOS DESPLEGABLES
+# SELECCIONAR COMPETICION
 # ============================================================
 
 def choose_select(
@@ -260,24 +257,23 @@ def choose_select(
                 )
 
                 matches = any(
-                    norm(wanted) in normalized_label
-                    or normalized_label in norm(wanted)
-                    for wanted in wanted_variants
+                    norm(wanted)
+                    in normalized_label
+                    or normalized_label
+                    in norm(wanted)
+                    for wanted
+                    in wanted_variants
                 )
 
                 if not matches:
                     continue
 
-                value = (
-                    option
-                    .get_attribute(
-                        "value"
-                    )
+                value = option.get_attribute(
+                    "value"
                 )
 
                 print(
-                    f"[SELECT] "
-                    f"{label} -> {value}"
+                    f"[SELECT] {label} -> {value}"
                 )
 
                 select.select_option(
@@ -313,7 +309,7 @@ def configure_competition(frame):
         if not selected:
 
             frame.page.wait_for_timeout(
-                2500
+                2000
             )
 
             selected = choose_select(
@@ -330,7 +326,7 @@ def configure_competition(frame):
 
 
 # ============================================================
-# PLAN B - ENTRAR DIRECTAMENTE EN ISQUAD
+# PLAN B - ACCESO DIRECTO
 # ============================================================
 
 def get_isquad_direct(page):
@@ -357,16 +353,6 @@ def get_isquad_direct(page):
             + f"?id={PHASE_ID}"
             + f"&id_categoria={CHAMPIONSHIP_ID}"
             + f"&id_competicion={COMPETITION_ID}"
-            + "&id_territorial=21"
-            + "&seleccion=0"
-        ),
-
-        (
-            ISQUAD_BASE
-            + "competicion.php"
-            + f"?id={PHASE_ID}"
-            + f"&id_competicion={COMPETITION_ID}"
-            + "&id_superficie=1"
             + "&id_territorial=21"
             + "&seleccion=0"
         ),
@@ -400,8 +386,7 @@ def get_isquad_direct(page):
 
                 print(
                     "[PLAN B OK] "
-                    "GMadrid encontrado "
-                    "directamente en iSquad."
+                    "GMadrid encontrado."
                 )
 
                 return page.main_frame
@@ -413,21 +398,14 @@ def get_isquad_direct(page):
                 repr(error),
             )
 
-    print(
-        "[PLAN B] Los enlaces directos "
-        "no contienen al equipo."
-    )
-
     return None
 
 
 # ============================================================
-# OBTENER LA COMPETICION
+# OBTENER COMPETICION
 # ============================================================
 
 def get_competition_frame(page):
-
-    # PLAN A
 
     frame = get_isquad_frame_from_fmbm(
         page
@@ -456,20 +434,12 @@ def get_competition_frame(page):
 
                 return frame
 
-            print(
-                "[PLAN A WARN] "
-                "Se encontro iSquad, "
-                "pero no aparece GMadrid."
-            )
-
         except Exception as error:
 
             print(
                 "[PLAN A WARN]",
                 repr(error),
             )
-
-    # PLAN B
 
     frame = get_isquad_direct(
         page
@@ -480,291 +450,200 @@ def get_competition_frame(page):
         return frame
 
     raise RuntimeError(
-        "No se pudo acceder a la competicion "
-        "de GMadrid ni desde FMBM ni "
-        "directamente desde iSquad."
+        "No se pudo acceder "
+        "a la competicion."
     )
 
 
 # ============================================================
-# CARGAR TODAS LAS JORNADAS
+# QUITAR MODAL / OVERLAY
 # ============================================================
 
-def get_all_rounds(frame):
-    """
-    Cierra o neutraliza el modal que puede bloquear
-    los clics y fuerza la carga de 'Todas' las jornadas.
-    """
-
-    print(
-        "[INFO] Intentando cargar todas las jornadas..."
-    )
-
-    # --------------------------------------------------------
-    # 1. GESTIONAR EL MODAL / OVERLAY
-    # --------------------------------------------------------
+def neutralize_modal(frame):
 
     try:
 
-        modal = frame.locator(
-            "#pdcc-modal-bg"
-        )
-
-        if modal.count():
-
-            print(
-                "[INFO] Modal de privacidad detectado."
-            )
-
-            possible_buttons = [
-                "Aceptar",
-                "Acepto",
-                "Aceptar todas",
-                "Aceptar todo",
-                "Continuar",
-                "Cerrar",
-            ]
-
-            closed = False
-
-            for text in possible_buttons:
-
-                try:
-
-                    button = frame.get_by_text(
-                        text,
-                        exact=False,
-                    )
-
-                    if button.count():
-
-                        print(
-                            "[INFO] Intentando cerrar "
-                            f"modal con: {text}"
-                        )
-
-                        button.first.click(
-                            force=True,
-                            timeout=3000,
-                        )
-
-                        frame.page.wait_for_timeout(
-                            1000
-                        )
-
-                        closed = True
-
-                        break
-
-                except Exception:
-                    pass
-
-            if not closed:
-
-                print(
-                    "[INFO] Neutralizando overlay "
-                    "del modal."
-                )
-
-                frame.evaluate(
-                    """
-                    () => {
-                        const modal =
-                            document.querySelector(
-                                '#pdcc-modal-bg'
-                            );
-
-                        if (modal) {
-                            modal.style.display = 'none';
-                            modal.style.pointerEvents = 'none';
-                        }
-
-                        document.querySelectorAll(
-                            'dialog'
-                        ).forEach(dialog => {
-                            dialog.style.display = 'none';
-                            dialog.style.pointerEvents = 'none';
-                        });
-                    }
-                    """
-                )
-
-                frame.page.wait_for_timeout(
-                    500
-                )
-
-    except Exception as error:
-
-        print(
-            "[WARN] No se pudo gestionar el modal:",
-            repr(error),
-        )
-
-    # --------------------------------------------------------
-    # 2. BUSCAR "TODAS"
-    # --------------------------------------------------------
-
-    try:
-
-        todas = frame.get_by_text(
-            "Todas",
-            exact=True,
-        )
-
-        print(
-            "[INFO] Botones 'Todas' encontrados:",
-            todas.count(),
-        )
-
-        if todas.count() == 0:
-
-            print(
-                "[WARN] No aparece el boton 'Todas'."
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # 3. CLIC FORZADO
-        # ----------------------------------------------------
-
-        print(
-            "[INFO] Pulsando 'Todas' con force=True..."
-        )
-
-        todas.first.click(
-            force=True,
-            timeout=10000,
-        )
-
-        frame.page.wait_for_timeout(
-            5000
-        )
-
-        print(
-            "[INFO] Clic en 'Todas' realizado."
-        )
-
-        # ----------------------------------------------------
-        # 4. COMPROBAR CUANTOS GMADRID HAY
-        # ----------------------------------------------------
-
-        body = frame.locator(
-            "body"
-        ).inner_text()
-
-        appearances = len(
-            re.findall(
-                r"G\s*MADRID\s*ELLAS\s*2NF",
-                body,
-                re.I,
-            )
-        )
-
-        print(
-            "[INFO] Apariciones de GMadrid "
-            "despues de pulsar Todas: "
-            f"{appearances}"
-        )
-
-        # Si ya tenemos varias apariciones,
-        # hemos terminado.
-        if appearances > 1:
-
-            return
-
-        print(
-            "[WARN] El clic se realizo, "
-            "pero solo aparece una jornada."
-        )
-
-    except Exception as error:
-
-        print(
-            "[WARN] Fallo el clic forzado "
-            "sobre 'Todas':",
-            repr(error),
-        )
-
-    # --------------------------------------------------------
-    # 5. PLAN ALTERNATIVO:
-    # CLIC DIRECTO MEDIANTE JAVASCRIPT
-    # --------------------------------------------------------
-
-    try:
-
-        print(
-            "[INFO] Intentando clic JavaScript "
-            "sobre 'Todas'..."
-        )
-
-        clicked = frame.evaluate(
+        frame.evaluate(
             """
             () => {
-                const elements =
-                    Array.from(
-                        document.querySelectorAll('*')
+                const modal =
+                    document.querySelector(
+                        '#pdcc-modal-bg'
                     );
 
-                const target =
-                    elements.find(el =>
-                        el.textContent.trim() === 'Todas'
-                    );
-
-                if (!target) {
-                    return false;
+                if (modal) {
+                    modal.style.display = 'none';
+                    modal.style.pointerEvents = 'none';
                 }
 
-                target.click();
-
-                return true;
+                document.querySelectorAll(
+                    'dialog'
+                ).forEach(dialog => {
+                    dialog.style.display = 'none';
+                    dialog.style.pointerEvents = 'none';
+                });
             }
             """
         )
 
-        print(
-            "[INFO] Resultado clic JavaScript:",
-            clicked,
-        )
+    except Exception:
 
-        if clicked:
+        pass
+
+
+# ============================================================
+# SELECCIONAR UNA JORNADA
+# ============================================================
+
+def select_round(frame, jornada):
+
+    neutralize_modal(
+        frame
+    )
+
+    print(
+        f"[JORNADA {jornada}] Seleccionando..."
+    )
+
+    # --------------------------------------------------------
+    # PRIMER INTENTO:
+    # buscar botones/enlaces con el numero exacto
+    # --------------------------------------------------------
+
+    candidates = frame.get_by_text(
+        str(jornada),
+        exact=True,
+    )
+
+    print(
+        f"[JORNADA {jornada}] "
+        f"Candidatos encontrados: "
+        f"{candidates.count()}"
+    )
+
+    for i in range(
+        candidates.count()
+    ):
+
+        candidate = candidates.nth(i)
+
+        try:
+
+            candidate.click(
+                force=True,
+                timeout=3000,
+            )
 
             frame.page.wait_for_timeout(
-                5000
+                2500
             )
 
             body = frame.locator(
                 "body"
             ).inner_text()
 
-            appearances = len(
-                re.findall(
-                    r"G\s*MADRID\s*ELLAS\s*2NF",
-                    body,
-                    re.I,
+            # Buscamos el encabezado de la jornada.
+            if re.search(
+                rf"JORNADA\s*{jornada}\b",
+                body,
+                re.I,
+            ):
+
+                print(
+                    f"[JORNADA {jornada}] "
+                    "Seleccionada correctamente."
                 )
+
+                return True
+
+        except Exception:
+
+            continue
+
+    # --------------------------------------------------------
+    # SEGUNDO INTENTO:
+    # Javascript
+    # --------------------------------------------------------
+
+    print(
+        f"[JORNADA {jornada}] "
+        "Intentando JavaScript..."
+    )
+
+    try:
+
+        clicked = frame.evaluate(
+            """
+            (roundNumber) => {
+
+                const elements =
+                    Array.from(
+                        document.querySelectorAll(
+                            'a, button, li, div, span'
+                        )
+                    );
+
+                const candidates =
+                    elements.filter(el =>
+                        el.textContent.trim()
+                        === String(roundNumber)
+                    );
+
+                for (
+                    const candidate
+                    of candidates
+                ) {
+
+                    try {
+
+                        candidate.click();
+
+                        return true;
+
+                    } catch (e) {
+                    }
+                }
+
+                return false;
+            }
+            """,
+            jornada,
+        )
+
+        if clicked:
+
+            frame.page.wait_for_timeout(
+                2500
             )
 
             print(
-                "[INFO] Apariciones de GMadrid "
-                "tras clic JavaScript: "
-                f"{appearances}"
+                f"[JORNADA {jornada}] "
+                "Clic JavaScript realizado."
             )
 
-    except Exception as js_error:
+            return True
+
+    except Exception as error:
 
         print(
-            "[WARN] Tambien fallo "
-            "el clic JavaScript:",
-            repr(js_error),
+            f"[JORNADA {jornada}] "
+            "Error JavaScript:",
+            repr(error),
         )
 
+    print(
+        f"[JORNADA {jornada}] "
+        "No se pudo seleccionar."
+    )
+
+    return False
+
 
 # ============================================================
-# EXTRAER BLOQUES DE PARTIDOS
+# BUSCAR BLOQUE DE GMADRID EN LA JORNADA ACTUAL
 # ============================================================
 
-def extract_match_blocks(frame):
+def find_gmadrid_block(frame):
 
     team_nodes = frame.get_by_text(
         re.compile(
@@ -772,15 +651,6 @@ def extract_match_blocks(frame):
             re.I,
         )
     )
-
-    print(
-        "[INFO] Apariciones de GMadrid:",
-        team_nodes.count(),
-    )
-
-    blocks = []
-
-    seen_texts = set()
 
     date_time_pattern = re.compile(
         r"\d{2}/\d{2}/20(?:26|27)"
@@ -810,11 +680,7 @@ def extract_match_blocks(frame):
                     xpath
                 )
 
-                if (
-                    parent.count()
-                    == 0
-                ):
-
+                if parent.count() == 0:
                     continue
 
                 text = (
@@ -835,68 +701,53 @@ def extract_match_blocks(frame):
 
                 continue
 
-            if (
-                TEAM
-                not in norm(text)
-            ):
-
-                continue
-
-            if not (
-                date_time_pattern
-                .search(text)
-            ):
-
-                continue
-
-            if (
+            if TEAM not in norm(
                 text
-                not in seen_texts
             ):
 
-                seen_texts.add(
-                    text
-                )
+                continue
 
-                blocks.append(
-                    text
-                )
+            if not date_time_pattern.search(
+                text
+            ):
 
-                print(
-                    "[ROW]",
-                    text[:600],
-                )
+                continue
 
-            break
+            return text
 
-    return blocks
+    return None
 
 
 # ============================================================
-# IDENTIFICAR PARTIDO
+# EXTRAER DATOS DEL PARTIDO
 # ============================================================
 
-def identify_match(
+def extract_match_data(
     block,
+    jornada,
     base_date,
     rival,
 ):
+
+    if not block:
+
+        return None
 
     normalized = norm(
         block
     )
 
-    if (
-        TEAM
-        not in normalized
-    ):
+    if norm(rival) not in normalized:
 
-        return None
+        print(
+            f"[JORNADA {jornada}] "
+            "El rival encontrado no coincide."
+        )
 
-    if (
-        norm(rival)
-        not in normalized
-    ):
+        print(
+            "[ROW]",
+            block[:500],
+        )
 
         return None
 
@@ -936,19 +787,19 @@ def identify_match(
         ).days
     )
 
-    # Permitimos reprogramaciones.
     if difference > 45:
+
+        print(
+            f"[JORNADA {jornada}] "
+            "Fecha demasiado alejada "
+            "del calendario base."
+        )
 
         return None
 
-    return match_datetime
-
-
-# ============================================================
-# EXTRAER PABELLON
-# ============================================================
-
-def extract_place(block):
+    # --------------------------------------------------------
+    # PABELLON
+    # --------------------------------------------------------
 
     date_time_match = re.search(
         r"\d{2}/\d{2}/20(?:26|27)"
@@ -957,109 +808,100 @@ def extract_place(block):
         block,
     )
 
-    if not date_time_match:
+    place = ""
 
-        return ""
+    if date_time_match:
 
-    after = block[
-        date_time_match.end():
-    ].strip()
+        after = block[
+            date_time_match.end():
+        ].strip()
 
-    stop_words = [
-        "Pendiente",
-        "Finalizado",
-        "Suspendido",
-        "Aplazado",
-        "Previo",
-        "Streaming",
-        "Estad.",
-        "Directo",
-        "Acta",
-        "Cronica",
-        "Crónica",
-    ]
+        stop_words = [
+            "Pendiente",
+            "Finalizado",
+            "Suspendido",
+            "Aplazado",
+            "Previo",
+            "Streaming",
+            "Estad.",
+            "Directo",
+            "Acta",
+            "Cronica",
+            "Crónica",
+        ]
 
-    cut_position = len(
-        after
-    )
-
-    for word in stop_words:
-
-        match = re.search(
-            re.escape(word),
-            after,
-            re.I,
+        cut_position = len(
+            after
         )
 
-        if match:
+        for word in stop_words:
 
-            cut_position = min(
-                cut_position,
-                match.start(),
+            match = re.search(
+                re.escape(word),
+                after,
+                re.I,
             )
 
-    place = after[
-        :cut_position
-    ].strip(
-        " -|"
-    )
+            if match:
 
-    if len(place) > 200:
+                cut_position = min(
+                    cut_position,
+                    match.start(),
+                )
 
-        return ""
+        place = after[
+            :cut_position
+        ].strip(
+            " -|"
+        )
 
-    return place
+        if len(place) > 200:
 
+            place = ""
 
-# ============================================================
-# EXTRAER ESTADO
-# ============================================================
+    # --------------------------------------------------------
+    # ESTADO
+    # --------------------------------------------------------
 
-def extract_status(block):
+    status = ""
 
-    statuses = [
+    for possible_status in [
         "Pendiente",
         "Finalizado",
         "Suspendido",
         "Aplazado",
-    ]
-
-    for status in statuses:
+    ]:
 
         if (
-            status.upper()
+            possible_status.upper()
             in block.upper()
         ):
 
-            return status
+            status = (
+                possible_status
+            )
 
-    return ""
+            break
+
+    return {
+        "dt": match_datetime,
+        "place": place,
+        "status": status,
+    }
 
 
 # ============================================================
-# EXTRAER TODOS LOS PARTIDOS
+# RECORRER LAS 14 JORNADAS
 # ============================================================
 
-def extract_matches(frame):
-
-    get_all_rounds(
-        frame
-    )
-
-    body = frame.locator(
-        "body"
-    ).inner_text()
-
-    print(
-        "[INFO] GMadrid aparece en pagina:",
-        TEAM in norm(body),
-    )
-
-    blocks = extract_match_blocks(
-        frame
-    )
+def extract_all_matches(frame):
 
     live = {}
+
+    print(
+        "[INFO] Iniciando recorrido "
+        "J1 -> J14."
+    )
 
     for (
         jornada,
@@ -1068,46 +910,70 @@ def extract_matches(frame):
         home,
     ) in BASE:
 
-        for block in blocks:
+        selected = select_round(
+            frame,
+            jornada,
+        )
 
-            match_datetime = identify_match(
-                block,
-                base_date,
-                rival,
-            )
-
-            if not match_datetime:
-
-                continue
-
-            place = extract_place(
-                block
-            )
-
-            status = extract_status(
-                block
-            )
-
-            live[jornada] = {
-                "dt": match_datetime,
-                "place": place,
-                "status": status,
-            }
+        if not selected:
 
             print(
-                f"[FOUND] J{jornada}: "
-                f"{match_datetime:%d/%m/%Y %H:%M}"
-                f" | {place}"
-                f" | {status}"
+                f"[WARN] J{jornada}: "
+                "no se pudo abrir."
             )
 
-            break
+            continue
+
+        block = find_gmadrid_block(
+            frame
+        )
+
+        if not block:
+
+            print(
+                f"[WARN] J{jornada}: "
+                "no se encontro el partido "
+                "de GMadrid."
+            )
+
+            continue
+
+        print(
+            f"[ROW J{jornada}]",
+            block[:500],
+        )
+
+        info = extract_match_data(
+            block,
+            jornada,
+            base_date,
+            rival,
+        )
+
+        if not info:
+
+            print(
+                f"[WARN] J{jornada}: "
+                "no se pudieron extraer "
+                "los datos."
+            )
+
+            continue
+
+        live[jornada] = info
+
+        print(
+            f"[FOUND] J{jornada}: "
+            f"{info['dt']:%d/%m/%Y %H:%M}"
+            f" | {info['place']}"
+            f" | {info['status']}"
+        )
 
     return live
 
 
 # ============================================================
-# FORMATO ICS
+# ESCAPAR ICS
 # ============================================================
 
 def escape_ics(text):
@@ -1152,21 +1018,27 @@ def generate_calendar(live):
     output = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
+
         (
             "PRODID:-//GMadrid Sports//"
             "eLLas 2026-2027//ES"
         ),
+
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
+
         (
             "X-WR-CALNAME:"
             "GMadrid eLLas 2026-2027"
         ),
+
         "X-WR-TIMEZONE:Europe/Madrid",
+
         (
             "REFRESH-INTERVAL;"
             "VALUE=DURATION:PT6H"
         ),
+
         "X-PUBLISHED-TTL:PT6H",
     ]
 
@@ -1232,21 +1104,25 @@ def generate_calendar(live):
 
         output += [
             "BEGIN:VEVENT",
+
             f"UID:{uid}",
+
             f"DTSTAMP:{timestamp}",
+
             (
                 "SUMMARY:"
                 f"{escape_ics(title)}"
             ),
+
             (
                 "DESCRIPTION:"
                 f"{escape_ics(description)}"
             ),
         ]
 
-        # ----------------------------------------------------
-        # PARTIDO CON HORARIO PUBLICADO
-        # ----------------------------------------------------
+        # ====================================================
+        # HORARIO PUBLICADO
+        # ====================================================
 
         if info:
 
@@ -1273,6 +1149,7 @@ def generate_calendar(live):
                     "TZID=Europe/Madrid:"
                     f"{start:%Y%m%dT%H%M%S}"
                 ),
+
                 (
                     "DTEND;"
                     "TZID=Europe/Madrid:"
@@ -1311,9 +1188,9 @@ def generate_calendar(live):
                 "TRANSP:OPAQUE"
             )
 
-        # ----------------------------------------------------
-        # PARTIDO TODAVIA SIN HORARIO
-        # ----------------------------------------------------
+        # ====================================================
+        # SIN HORARIO PUBLICADO
+        # ====================================================
 
         else:
 
@@ -1334,6 +1211,7 @@ def generate_calendar(live):
                     "DTSTART;VALUE=DATE:"
                     f"{date:%Y%m%d}"
                 ),
+
                 (
                     "DTEND;VALUE=DATE:"
                     f"{next_date:%Y%m%d}"
@@ -1399,7 +1277,7 @@ def main():
                 page
             )
 
-            live = extract_matches(
+            live = extract_all_matches(
                 frame
             )
 
@@ -1418,8 +1296,7 @@ def main():
             )
 
             print(
-                "[ERROR] El archivo ICS "
-                "NO sera modificado.",
+                "[ERROR] El ICS NO sera modificado.",
                 file=sys.stderr,
             )
 
@@ -1439,8 +1316,15 @@ def main():
             f"detectados: {len(live)}"
         )
 
+        print(
+            "[INFO] Jornadas detectadas:",
+            sorted(
+                live.keys()
+            ),
+        )
+
         # ====================================================
-        # GENERAR EL ICS
+        # GENERAR ICS
         # ====================================================
 
         calendar = generate_calendar(
@@ -1472,8 +1356,7 @@ def main():
         )
 
         print(
-            "[ERROR] El archivo ICS "
-            "NO sera modificado.",
+            "[ERROR] El ICS NO sera modificado.",
             file=sys.stderr,
         )
 
