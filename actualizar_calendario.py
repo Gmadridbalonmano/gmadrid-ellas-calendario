@@ -34,17 +34,6 @@ TZ = ZoneInfo("Europe/Madrid")
 # ============================================================
 # IDS DESCUBIERTOS EN ISQUAD
 # ============================================================
-#
-# Estos valores los obtuvo el propio workflow
-# cuando consiguio navegar correctamente:
-#
-# Temporada 2026/2027              -> 2627
-# Campeonato Autonomico Femenino   -> 3097
-# Liga 2a Nacional Femenina        -> 211913
-# Primera Fase - Grupo A           -> 1040390
-#
-# Los usamos solamente como PLAN B.
-# ============================================================
 
 SEASON_ID = "2627"
 CHAMPIONSHIP_ID = "3097"
@@ -190,8 +179,7 @@ def get_isquad_frame_from_fmbm(page):
         timeout=60000,
     )
 
-    # Esperamos hasta 30 segundos.
-    # Antes solo esperabamos 4.
+    # Esperamos hasta 30 segundos al iframe.
     for attempt in range(30):
 
         for frame in page.frames:
@@ -272,15 +260,9 @@ def choose_select(
                 )
 
                 matches = any(
-
-                    norm(wanted)
-                    in normalized_label
-
-                    or normalized_label
-                    in norm(wanted)
-
-                    for wanted
-                    in wanted_variants
+                    norm(wanted) in normalized_label
+                    or normalized_label in norm(wanted)
+                    for wanted in wanted_variants
                 )
 
                 if not matches:
@@ -358,9 +340,6 @@ def get_isquad_direct(page):
         "directo a iSquad..."
     )
 
-    # Probamos varias combinaciones porque
-    # iSquad puede cambiar los nombres de los
-    # parametros entre vistas.
     candidate_urls = [
 
         (
@@ -436,7 +415,7 @@ def get_isquad_direct(page):
 
     print(
         "[PLAN B] Los enlaces directos "
-        "no contienen todavia al equipo."
+        "no contienen al equipo."
     )
 
     return None
@@ -448,9 +427,7 @@ def get_isquad_direct(page):
 
 def get_competition_frame(page):
 
-    # ------------------------
     # PLAN A
-    # ------------------------
 
     frame = get_isquad_frame_from_fmbm(
         page
@@ -492,9 +469,7 @@ def get_competition_frame(page):
                 repr(error),
             )
 
-    # ------------------------
     # PLAN B
-    # ------------------------
 
     frame = get_isquad_direct(
         page
@@ -512,10 +487,122 @@ def get_competition_frame(page):
 
 
 # ============================================================
-# MOSTRAR TODAS LAS JORNADAS
+# CARGAR TODAS LAS JORNADAS
 # ============================================================
 
 def get_all_rounds(frame):
+    """
+    Cierra o neutraliza el modal que puede bloquear
+    los clics y fuerza la carga de 'Todas' las jornadas.
+    """
+
+    print(
+        "[INFO] Intentando cargar todas las jornadas..."
+    )
+
+    # --------------------------------------------------------
+    # 1. GESTIONAR EL MODAL / OVERLAY
+    # --------------------------------------------------------
+
+    try:
+
+        modal = frame.locator(
+            "#pdcc-modal-bg"
+        )
+
+        if modal.count():
+
+            print(
+                "[INFO] Modal de privacidad detectado."
+            )
+
+            possible_buttons = [
+                "Aceptar",
+                "Acepto",
+                "Aceptar todas",
+                "Aceptar todo",
+                "Continuar",
+                "Cerrar",
+            ]
+
+            closed = False
+
+            for text in possible_buttons:
+
+                try:
+
+                    button = frame.get_by_text(
+                        text,
+                        exact=False,
+                    )
+
+                    if button.count():
+
+                        print(
+                            "[INFO] Intentando cerrar "
+                            f"modal con: {text}"
+                        )
+
+                        button.first.click(
+                            force=True,
+                            timeout=3000,
+                        )
+
+                        frame.page.wait_for_timeout(
+                            1000
+                        )
+
+                        closed = True
+
+                        break
+
+                except Exception:
+                    pass
+
+            if not closed:
+
+                print(
+                    "[INFO] Neutralizando overlay "
+                    "del modal."
+                )
+
+                frame.evaluate(
+                    """
+                    () => {
+                        const modal =
+                            document.querySelector(
+                                '#pdcc-modal-bg'
+                            );
+
+                        if (modal) {
+                            modal.style.display = 'none';
+                            modal.style.pointerEvents = 'none';
+                        }
+
+                        document.querySelectorAll(
+                            'dialog'
+                        ).forEach(dialog => {
+                            dialog.style.display = 'none';
+                            dialog.style.pointerEvents = 'none';
+                        });
+                    }
+                    """
+                )
+
+                frame.page.wait_for_timeout(
+                    500
+                )
+
+    except Exception as error:
+
+        print(
+            "[WARN] No se pudo gestionar el modal:",
+            repr(error),
+        )
+
+    # --------------------------------------------------------
+    # 2. BUSCAR "TODAS"
+    # --------------------------------------------------------
 
     try:
 
@@ -524,23 +611,152 @@ def get_all_rounds(frame):
             exact=True,
         )
 
-        if todas.count():
+        print(
+            "[INFO] Botones 'Todas' encontrados:",
+            todas.count(),
+        )
+
+        if todas.count() == 0:
 
             print(
-                "[INFO] Pulsando 'Todas'..."
+                "[WARN] No aparece el boton 'Todas'."
             )
 
-            todas.first.click()
+            return
 
-            frame.page.wait_for_timeout(
-                3000
+        # ----------------------------------------------------
+        # 3. CLIC FORZADO
+        # ----------------------------------------------------
+
+        print(
+            "[INFO] Pulsando 'Todas' con force=True..."
+        )
+
+        todas.first.click(
+            force=True,
+            timeout=10000,
+        )
+
+        frame.page.wait_for_timeout(
+            5000
+        )
+
+        print(
+            "[INFO] Clic en 'Todas' realizado."
+        )
+
+        # ----------------------------------------------------
+        # 4. COMPROBAR CUANTOS GMADRID HAY
+        # ----------------------------------------------------
+
+        body = frame.locator(
+            "body"
+        ).inner_text()
+
+        appearances = len(
+            re.findall(
+                r"G\s*MADRID\s*ELLAS\s*2NF",
+                body,
+                re.I,
             )
+        )
+
+        print(
+            "[INFO] Apariciones de GMadrid "
+            "despues de pulsar Todas: "
+            f"{appearances}"
+        )
+
+        # Si ya tenemos varias apariciones,
+        # hemos terminado.
+        if appearances > 1:
+
+            return
+
+        print(
+            "[WARN] El clic se realizo, "
+            "pero solo aparece una jornada."
+        )
 
     except Exception as error:
 
         print(
-            "[WARN] No se pudo pulsar Todas:",
+            "[WARN] Fallo el clic forzado "
+            "sobre 'Todas':",
             repr(error),
+        )
+
+    # --------------------------------------------------------
+    # 5. PLAN ALTERNATIVO:
+    # CLIC DIRECTO MEDIANTE JAVASCRIPT
+    # --------------------------------------------------------
+
+    try:
+
+        print(
+            "[INFO] Intentando clic JavaScript "
+            "sobre 'Todas'..."
+        )
+
+        clicked = frame.evaluate(
+            """
+            () => {
+                const elements =
+                    Array.from(
+                        document.querySelectorAll('*')
+                    );
+
+                const target =
+                    elements.find(el =>
+                        el.textContent.trim() === 'Todas'
+                    );
+
+                if (!target) {
+                    return false;
+                }
+
+                target.click();
+
+                return true;
+            }
+            """
+        )
+
+        print(
+            "[INFO] Resultado clic JavaScript:",
+            clicked,
+        )
+
+        if clicked:
+
+            frame.page.wait_for_timeout(
+                5000
+            )
+
+            body = frame.locator(
+                "body"
+            ).inner_text()
+
+            appearances = len(
+                re.findall(
+                    r"G\s*MADRID\s*ELLAS\s*2NF",
+                    body,
+                    re.I,
+                )
+            )
+
+            print(
+                "[INFO] Apariciones de GMadrid "
+                "tras clic JavaScript: "
+                f"{appearances}"
+            )
+
+    except Exception as js_error:
+
+        print(
+            "[WARN] Tambien fallo "
+            "el clic JavaScript:",
+            repr(js_error),
         )
 
 
@@ -1028,9 +1244,9 @@ def generate_calendar(live):
             ),
         ]
 
-        # ----------------------------------------
-        # HORARIO PUBLICADO
-        # ----------------------------------------
+        # ----------------------------------------------------
+        # PARTIDO CON HORARIO PUBLICADO
+        # ----------------------------------------------------
 
         if info:
 
@@ -1095,9 +1311,9 @@ def generate_calendar(live):
                 "TRANSP:OPAQUE"
             )
 
-        # ----------------------------------------
-        # SIN HORARIO
-        # ----------------------------------------
+        # ----------------------------------------------------
+        # PARTIDO TODAVIA SIN HORARIO
+        # ----------------------------------------------------
 
         else:
 
@@ -1192,12 +1408,6 @@ def main():
         # ====================================================
         # CONTROL DE SEGURIDAD
         # ====================================================
-        #
-        # La J1 ya esta publicada.
-        #
-        # Si desaparece, asumimos que ha cambiado
-        # la web y NO sobrescribimos el calendario.
-        # ====================================================
 
         if 1 not in live:
 
@@ -1230,7 +1440,7 @@ def main():
         )
 
         # ====================================================
-        # GENERAR EL ICS SOLO DESPUES DEL CONTROL
+        # GENERAR EL ICS
         # ====================================================
 
         calendar = generate_calendar(
