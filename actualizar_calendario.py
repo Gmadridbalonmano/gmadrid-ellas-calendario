@@ -2,11 +2,11 @@
 
 import re
 import sys
+import html
+import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
-
-from playwright.sync_api import sync_playwright
 
 
 # ============================================================
@@ -19,25 +19,33 @@ ICS_FILE = Path(
     "GMadrid_eLLas_2026-2027_Google_Calendar.ics"
 )
 
-FMBM_URL = (
-    "https://www.fmbalonmano.com/"
-    "resultados-clasificaciones"
-)
-
-ISQUAD_BASE = (
-    "https://resultadosbalonmano.isquad.es/"
-)
-
 TZ = ZoneInfo("Europe/Madrid")
 
 
 # ============================================================
-# IDS DESCUBIERTOS EN ISQUAD
+# URL DIRECTA DE ISQUAD
+# ============================================================
+#
+# Estos parametros los hemos obtenido directamente
+# observando la peticion real que hace iSquad al
+# seleccionar la Jornada 2.
+#
+# Lo unico que cambiaremos sera jornada=1 ... jornada=14
 # ============================================================
 
-CHAMPIONSHIP_ID = "3097"
-COMPETITION_ID = "211913"
-PHASE_ID = "1040390"
+ISQUAD_URL = (
+    "https://resultadosbalonmano.isquad.es/"
+    "competicion.php"
+    "?seleccion=0"
+    "&id=1040390"
+    "&id_ambito=0"
+    "&id_territorial=21"
+    "&id_superficie=1"
+    "&iframe=0"
+    "&id_categoria=3097"
+    "&id_competicion=211913"
+    "&jornada={jornada}"
+)
 
 
 # ============================================================
@@ -46,7 +54,9 @@ PHASE_ID = "1040390"
 
 BASE = [
     (1, "2026-10-04", "GRUPO EGIDO BM PINTO 2NF", True),
+
     (2, "2026-10-18", "CB PARLA 2NF", False),
+
     (3, "2026-10-25", "BALONMANO LEGANES 2NF", True),
 
     (
@@ -56,7 +66,12 @@ BASE = [
         False,
     ),
 
-    (5, "2026-11-15", "CAB CONCE 1NF", False),
+    (
+        5,
+        "2026-11-15",
+        "CAB CONCE 1NF",
+        False,
+    ),
 
     (
         6,
@@ -65,7 +80,12 @@ BASE = [
         True,
     ),
 
-    (7, "2026-11-29", "CORAZONISTAS 2NF", False),
+    (
+        7,
+        "2026-11-29",
+        "CORAZONISTAS 2NF",
+        False,
+    ),
 
     (
         8,
@@ -74,7 +94,12 @@ BASE = [
         False,
     ),
 
-    (9, "2027-01-17", "CB PARLA 2NF", True),
+    (
+        9,
+        "2027-01-17",
+        "CB PARLA 2NF",
+        True,
+    ),
 
     (
         10,
@@ -90,7 +115,12 @@ BASE = [
         True,
     ),
 
-    (12, "2027-02-07", "CAB CONCE 1NF", True),
+    (
+        12,
+        "2027-02-07",
+        "CAB CONCE 1NF",
+        True,
+    ),
 
     (
         13,
@@ -99,36 +129,12 @@ BASE = [
         False,
     ),
 
-    (14, "2027-02-21", "CORAZONISTAS 2NF", True),
-]
-
-
-# ============================================================
-# OPCIONES DE LOS DESPLEGABLES
-# ============================================================
-
-TARGETS = [
-    [
-        "2026/2027",
-        "2026-2027",
-        "2026 / 2027",
-    ],
-
-    [
-        "CAMPEONATO AUTONÓMICO DE LIGA FEMENINO",
-        "CAMPEONATO AUTONOMICO DE LIGA FEMENINO",
-    ],
-
-    [
-        "LIGA 2ª NACIONAL FEMENINA",
-        "LIGA 2º NACIONAL FEMENINA",
-        "2ª NACIONAL FEMENINA",
-    ],
-
-    [
-        "PRIMERA FASE - GRUPO A",
-        "PRIMERA FASE GRUPO A",
-    ],
+    (
+        14,
+        "2027-02-21",
+        "CORAZONISTAS 2NF",
+        True,
+    ),
 ]
 
 
@@ -138,588 +144,149 @@ TARGETS = [
 
 def norm(text):
 
+    text = html.unescape(
+        str(text)
+    )
+
     return re.sub(
         r"\s+",
         " ",
-        str(text).upper().strip(),
+        text.upper().strip(),
     )
 
 
-def page_contains_team(frame):
+def fetch(url):
 
-    try:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 "
+                "(compatible; "
+                "GMadrid-eLLas-Calendar/1.0)"
+            )
+        },
+    )
 
-        body = frame.locator(
-            "body"
-        ).inner_text(
-            timeout=10000
+    with urllib.request.urlopen(
+        request,
+        timeout=30,
+    ) as response:
+
+        return response.read().decode(
+            "utf-8",
+            errors="replace",
         )
 
-        return TEAM in norm(body)
 
-    except Exception:
+def html_to_text(raw_html):
 
-        return False
+    text = re.sub(
+        r"<script\b[^>]*>.*?</script>",
+        " ",
+        raw_html,
+        flags=re.I | re.S,
+    )
+
+    text = re.sub(
+        r"<style\b[^>]*>.*?</style>",
+        " ",
+        text,
+        flags=re.I | re.S,
+    )
+
+    text = re.sub(
+        r"<br\s*/?>",
+        "\n",
+        text,
+        flags=re.I,
+    )
+
+    text = re.sub(
+        r"</(?:td|th|tr|div|p|li)>",
+        "\n",
+        text,
+        flags=re.I,
+    )
+
+    text = re.sub(
+        r"<[^>]+>",
+        " ",
+        text,
+    )
+
+    text = html.unescape(
+        text
+    )
+
+    text = text.replace(
+        "\xa0",
+        " ",
+    )
+
+    text = re.sub(
+        r"[ \t]+",
+        " ",
+        text,
+    )
+
+    text = re.sub(
+        r"\n+",
+        "\n",
+        text,
+    )
+
+    return text.strip()
 
 
 # ============================================================
-# PLAN A - ENTRAR DESDE FMBM
+# EXTRAER EL BLOQUE DE GMADRID
 # ============================================================
 
-def get_isquad_frame_from_fmbm(page):
+def find_gmadrid_block(text):
 
-    print(
-        "[PLAN A] Abriendo FMBM..."
-    )
+    lines = [
+        re.sub(
+            r"\s+",
+            " ",
+            line,
+        ).strip()
 
-    page.goto(
-        FMBM_URL,
-        wait_until="domcontentloaded",
-        timeout=60000,
-    )
+        for line in text.splitlines()
 
-    for attempt in range(30):
-
-        for frame in page.frames:
-
-            if (
-                "resultadosbalonmano.isquad.es"
-                in frame.url
-            ):
-
-                print(
-                    "[PLAN A OK] iframe iSquad encontrado:"
-                )
-
-                print(
-                    frame.url
-                )
-
-                return frame
-
-        if attempt % 5 == 0:
-
-            print(
-                "[PLAN A] Esperando iframe..."
-            )
-
-        page.wait_for_timeout(
-            1000
-        )
-
-    print(
-        "[PLAN A FALLIDO] "
-        "No aparece el iframe."
-    )
-
-    return None
-
-
-# ============================================================
-# SELECCIONAR COMPETICION
-# ============================================================
-
-def choose_select(
-    frame,
-    wanted_variants,
-):
-
-    selects = frame.locator(
-        "select"
-    )
-
-    for i in range(
-        selects.count()
-    ):
-
-        select = selects.nth(i)
-
-        try:
-
-            options = select.locator(
-                "option"
-            )
-
-            for j in range(
-                options.count()
-            ):
-
-                option = options.nth(j)
-
-                label = (
-                    option
-                    .inner_text()
-                    .strip()
-                )
-
-                normalized_label = norm(
-                    label
-                )
-
-                matches = any(
-                    norm(wanted)
-                    in normalized_label
-                    or normalized_label
-                    in norm(wanted)
-                    for wanted
-                    in wanted_variants
-                )
-
-                if not matches:
-                    continue
-
-                value = option.get_attribute(
-                    "value"
-                )
-
-                print(
-                    f"[SELECT] {label} -> {value}"
-                )
-
-                select.select_option(
-                    value=value
-                )
-
-                frame.page.wait_for_timeout(
-                    2000
-                )
-
-                return True
-
-        except Exception:
-
-            continue
-
-    return False
-
-
-def configure_competition(frame):
-
-    print(
-        "[INFO] Seleccionando competicion..."
-    )
-
-    for target in TARGETS:
-
-        selected = choose_select(
-            frame,
-            target,
-        )
-
-        if not selected:
-
-            frame.page.wait_for_timeout(
-                2000
-            )
-
-            selected = choose_select(
-                frame,
-                target,
-            )
-
-        if not selected:
-
-            raise RuntimeError(
-                "No se pudo seleccionar: "
-                + target[0]
-            )
-
-
-# ============================================================
-# PLAN B - ACCESO DIRECTO
-# ============================================================
-
-def get_isquad_direct(page):
-
-    print(
-        "[PLAN B] Intentando acceso "
-        "directo a iSquad..."
-    )
-
-    candidate_urls = [
-
-        (
-            ISQUAD_BASE
-            + "competicion.php"
-            + f"?id={PHASE_ID}"
-            + f"&id_competicion={COMPETITION_ID}"
-            + "&id_territorial=21"
-            + "&seleccion=0"
-        ),
-
-        (
-            ISQUAD_BASE
-            + "competicion.php"
-            + f"?id={PHASE_ID}"
-            + f"&id_categoria={CHAMPIONSHIP_ID}"
-            + f"&id_competicion={COMPETITION_ID}"
-            + "&id_territorial=21"
-            + "&seleccion=0"
-        ),
+        if line.strip()
     ]
 
-    for candidate in candidate_urls:
-
-        print(
-            "[PLAN B] Probando:"
-        )
-
-        print(
-            candidate
-        )
-
-        try:
-
-            page.goto(
-                candidate,
-                wait_until="domcontentloaded",
-                timeout=60000,
-            )
-
-            page.wait_for_timeout(
-                4000
-            )
-
-            if page_contains_team(
-                page.main_frame
-            ):
-
-                print(
-                    "[PLAN B OK] "
-                    "GMadrid encontrado."
-                )
-
-                return page.main_frame
-
-        except Exception as error:
-
-            print(
-                "[PLAN B WARN]",
-                repr(error),
-            )
-
-    return None
-
-
-# ============================================================
-# OBTENER COMPETICION
-# ============================================================
-
-def get_competition_frame(page):
-
-    frame = get_isquad_frame_from_fmbm(
-        page
-    )
-
-    if frame is not None:
-
-        try:
-
-            configure_competition(
-                frame
-            )
-
-            page.wait_for_timeout(
-                2500
-            )
-
-            if page_contains_team(
-                frame
-            ):
-
-                print(
-                    "[PLAN A COMPLETADO] "
-                    "GMadrid encontrado."
-                )
-
-                return frame
-
-        except Exception as error:
-
-            print(
-                "[PLAN A WARN]",
-                repr(error),
-            )
-
-    frame = get_isquad_direct(
-        page
-    )
-
-    if frame is not None:
-
-        return frame
-
-    raise RuntimeError(
-        "No se pudo acceder "
-        "a la competicion."
-    )
-
-
-# ============================================================
-# QUITAR MODAL / OVERLAY
-# ============================================================
-
-def neutralize_modal(frame):
-
-    try:
-
-        frame.evaluate(
-            """
-            () => {
-                const modal =
-                    document.querySelector(
-                        '#pdcc-modal-bg'
-                    );
-
-                if (modal) {
-                    modal.style.display = 'none';
-                    modal.style.pointerEvents = 'none';
-                }
-
-                document.querySelectorAll(
-                    'dialog'
-                ).forEach(dialog => {
-                    dialog.style.display = 'none';
-                    dialog.style.pointerEvents = 'none';
-                });
-            }
-            """
-        )
-
-    except Exception:
-
-        pass
-
-
-# ============================================================
-# SELECCIONAR UNA JORNADA
-# ============================================================
-
-def select_round(frame, jornada):
-
-    neutralize_modal(
-        frame
-    )
-
-    print(
-        f"[JORNADA {jornada}] Seleccionando..."
-    )
-
-    # --------------------------------------------------------
-    # PRIMER INTENTO:
-    # buscar botones/enlaces con el numero exacto
-    # --------------------------------------------------------
-
-    candidates = frame.get_by_text(
-        str(jornada),
-        exact=True,
-    )
-
-    print(
-        f"[JORNADA {jornada}] "
-        f"Candidatos encontrados: "
-        f"{candidates.count()}"
-    )
-
-    for i in range(
-        candidates.count()
+    for index, line in enumerate(
+        lines
     ):
 
-        candidate = candidates.nth(i)
-
-        try:
-
-            candidate.click(
-                force=True,
-                timeout=3000,
-            )
-
-            frame.page.wait_for_timeout(
-                2500
-            )
-
-            body = frame.locator(
-                "body"
-            ).inner_text()
-
-            # Buscamos el encabezado de la jornada.
-            if re.search(
-                rf"JORNADA\s*{jornada}\b",
-                body,
-                re.I,
-            ):
-
-                print(
-                    f"[JORNADA {jornada}] "
-                    "Seleccionada correctamente."
-                )
-
-                return True
-
-        except Exception:
-
+        if TEAM not in norm(
+            line
+        ):
             continue
 
-    # --------------------------------------------------------
-    # SEGUNDO INTENTO:
-    # Javascript
-    # --------------------------------------------------------
-
-    print(
-        f"[JORNADA {jornada}] "
-        "Intentando JavaScript..."
-    )
-
-    try:
-
-        clicked = frame.evaluate(
-            """
-            (roundNumber) => {
-
-                const elements =
-                    Array.from(
-                        document.querySelectorAll(
-                            'a, button, li, div, span'
-                        )
-                    );
-
-                const candidates =
-                    elements.filter(el =>
-                        el.textContent.trim()
-                        === String(roundNumber)
-                    );
-
-                for (
-                    const candidate
-                    of candidates
-                ) {
-
-                    try {
-
-                        candidate.click();
-
-                        return true;
-
-                    } catch (e) {
-                    }
-                }
-
-                return false;
-            }
-            """,
-            jornada,
+        start = max(
+            0,
+            index - 3,
         )
 
-        if clicked:
-
-            frame.page.wait_for_timeout(
-                2500
-            )
-
-            print(
-                f"[JORNADA {jornada}] "
-                "Clic JavaScript realizado."
-            )
-
-            return True
-
-    except Exception as error:
-
-        print(
-            f"[JORNADA {jornada}] "
-            "Error JavaScript:",
-            repr(error),
+        end = min(
+            len(lines),
+            index + 12,
         )
 
-    print(
-        f"[JORNADA {jornada}] "
-        "No se pudo seleccionar."
-    )
-
-    return False
-
-
-# ============================================================
-# BUSCAR BLOQUE DE GMADRID EN LA JORNADA ACTUAL
-# ============================================================
-
-def find_gmadrid_block(frame):
-
-    team_nodes = frame.get_by_text(
-        re.compile(
-            r"G\s*MADRID\s*ELLAS\s*2NF",
-            re.I,
+        block = " ".join(
+            lines[start:end]
         )
-    )
 
-    date_time_pattern = re.compile(
-        r"\d{2}/\d{2}/20(?:26|27)"
-        r"[\s\S]{0,150}"
-        r"\d{1,2}:\d{2}"
-    )
-
-    for i in range(
-        team_nodes.count()
-    ):
-
-        node = team_nodes.nth(i)
-
-        for level in range(
-            1,
-            9,
-        ):
-
-            xpath = (
-                "xpath="
-                + "/.." * level
-            )
-
-            try:
-
-                parent = node.locator(
-                    xpath
-                )
-
-                if parent.count() == 0:
-                    continue
-
-                text = (
-                    parent
-                    .first
-                    .inner_text(
-                        timeout=3000
-                    )
-                )
-
-                text = re.sub(
-                    r"\s+",
-                    " ",
-                    text,
-                ).strip()
-
-            except Exception:
-
-                continue
-
-            if TEAM not in norm(
-                text
-            ):
-
-                continue
-
-            if not date_time_pattern.search(
-                text
-            ):
-
-                continue
-
-            return text
+        return block
 
     return None
 
 
 # ============================================================
-# EXTRAER DATOS DEL PARTIDO
+# EXTRAER DATOS DE UNA JORNADA
 # ============================================================
 
 def extract_match_data(
@@ -737,24 +304,37 @@ def extract_match_data(
         block
     )
 
+    if TEAM not in normalized:
+
+        return None
+
     if norm(rival) not in normalized:
 
         print(
-            f"[JORNADA {jornada}] "
-            "El rival encontrado no coincide."
+            f"[WARN] J{jornada}: "
+            "GMadrid aparece, pero "
+            "el rival no coincide."
         )
 
         print(
-            "[ROW]",
-            block[:500],
+            f"[ROW J{jornada}] "
+            f"{block[:500]}"
         )
 
         return None
+
+    # --------------------------------------------------------
+    # FECHA
+    # --------------------------------------------------------
 
     date_match = re.search(
         r"(\d{2}/\d{2}/20(?:26|27))",
         block,
     )
+
+    # --------------------------------------------------------
+    # HORA
+    # --------------------------------------------------------
 
     time_match = re.search(
         r"\b(\d{1,2}:\d{2})\b",
@@ -766,6 +346,12 @@ def extract_match_data(
         or not time_match
     ):
 
+        print(
+            f"[INFO] J{jornada}: "
+            "partido localizado, "
+            "pero aun sin fecha/hora completa."
+        )
+
         return None
 
     match_datetime = datetime.strptime(
@@ -774,6 +360,10 @@ def extract_match_data(
         + time_match.group(1),
         "%d/%m/%Y %H:%M",
     )
+
+    # --------------------------------------------------------
+    # CONTROL DE FECHA
+    # --------------------------------------------------------
 
     expected_date = datetime.strptime(
         base_date,
@@ -787,12 +377,13 @@ def extract_match_data(
         ).days
     )
 
-    if difference > 45:
+    # Permitimos reprogramaciones amplias.
+    if difference > 60:
 
         print(
-            f"[JORNADA {jornada}] "
-            "Fecha demasiado alejada "
-            "del calendario base."
+            f"[WARN] J{jornada}: "
+            "fecha detectada demasiado "
+            "alejada del calendario base."
         )
 
         return None
@@ -828,6 +419,7 @@ def extract_match_data(
             "Acta",
             "Cronica",
             "Crónica",
+            "No disponible",
         ]
 
         cut_position = len(
@@ -874,12 +466,10 @@ def extract_match_data(
 
         if (
             possible_status.upper()
-            in block.upper()
+            in normalized
         ):
 
-            status = (
-                possible_status
-            )
+            status = possible_status
 
             break
 
@@ -891,16 +481,16 @@ def extract_match_data(
 
 
 # ============================================================
-# RECORRER LAS 14 JORNADAS
+# CONSULTAR LAS 14 JORNADAS DIRECTAMENTE
 # ============================================================
 
-def extract_all_matches(frame):
+def extract_all_matches():
 
     live = {}
 
     print(
-        "[INFO] Iniciando recorrido "
-        "J1 -> J14."
+        "[INFO] Consultando directamente "
+        "las jornadas 1-14 en iSquad."
     )
 
     for (
@@ -910,37 +500,55 @@ def extract_all_matches(frame):
         home,
     ) in BASE:
 
-        selected = select_round(
-            frame,
-            jornada,
+        url = ISQUAD_URL.format(
+            jornada=jornada
         )
 
-        if not selected:
+        print(
+            f"[JORNADA {jornada}] "
+            "Consultando..."
+        )
+
+        print(
+            f"[URL J{jornada}] {url}"
+        )
+
+        try:
+
+            raw_html = fetch(
+                url
+            )
+
+        except Exception as error:
 
             print(
                 f"[WARN] J{jornada}: "
-                "no se pudo abrir."
+                "error descargando iSquad:",
+                repr(error),
             )
 
             continue
 
+        text = html_to_text(
+            raw_html
+        )
+
         block = find_gmadrid_block(
-            frame
+            text
         )
 
         if not block:
 
             print(
                 f"[WARN] J{jornada}: "
-                "no se encontro el partido "
-                "de GMadrid."
+                "no aparece GMadrid."
             )
 
             continue
 
         print(
-            f"[ROW J{jornada}]",
-            block[:500],
+            f"[ROW J{jornada}] "
+            f"{block[:500]}"
         )
 
         info = extract_match_data(
@@ -953,14 +561,15 @@ def extract_all_matches(frame):
         if not info:
 
             print(
-                f"[WARN] J{jornada}: "
-                "no se pudieron extraer "
-                "los datos."
+                f"[INFO] J{jornada}: "
+                "sin horario utilizable."
             )
 
             continue
 
-        live[jornada] = info
+        live[
+            jornada
+        ] = info
 
         print(
             f"[FOUND] J{jornada}: "
@@ -973,7 +582,7 @@ def extract_all_matches(frame):
 
 
 # ============================================================
-# ESCAPAR ICS
+# FORMATO ICS
 # ============================================================
 
 def escape_ics(text):
@@ -1076,6 +685,9 @@ def generate_calendar(live):
 
             default_place = ""
 
+        # MUY IMPORTANTE:
+        # UID FIJO PARA QUE GOOGLE ACTUALICE
+        # EL MISMO EVENTO.
         uid = (
             "gmadrid-ellas-2627-"
             f"j{jornada}@gmadridsports"
@@ -1189,7 +801,7 @@ def generate_calendar(live):
             )
 
         # ====================================================
-        # SIN HORARIO PUBLICADO
+        # TODAVIA SIN HORARIO
         # ====================================================
 
         else:
@@ -1256,35 +868,14 @@ def main():
 
     try:
 
-        with sync_playwright() as playwright:
-
-            browser = (
-                playwright
-                .chromium
-                .launch(
-                    headless=True
-                )
-            )
-
-            page = browser.new_page(
-                viewport={
-                    "width": 1600,
-                    "height": 1000,
-                }
-            )
-
-            frame = get_competition_frame(
-                page
-            )
-
-            live = extract_all_matches(
-                frame
-            )
-
-            browser.close()
+        live = extract_all_matches()
 
         # ====================================================
         # CONTROL DE SEGURIDAD
+        # ====================================================
+        #
+        # Sabemos que J1 existe y tiene horario.
+        # Si deja de aparecer, NO tocamos el calendario.
         # ====================================================
 
         if 1 not in live:
