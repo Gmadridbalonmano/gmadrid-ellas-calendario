@@ -9,10 +9,6 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
-# ============================================================
-# CONFIGURACION
-# ============================================================
-
 TEAM = "G MADRID ELLAS 2NF"
 
 ICS_FILE = Path(
@@ -23,14 +19,7 @@ TZ = ZoneInfo("Europe/Madrid")
 
 
 # ============================================================
-# URL DIRECTA DE ISQUAD
-# ============================================================
-#
-# Estos parametros los hemos obtenido directamente
-# observando la peticion real que hace iSquad al
-# seleccionar la Jornada 2.
-#
-# Lo unico que cambiaremos sera jornada=1 ... jornada=14
+# URL DIRECTA ISQUAD
 # ============================================================
 
 ISQUAD_URL = (
@@ -49,14 +38,12 @@ ISQUAD_URL = (
 
 
 # ============================================================
-# CALENDARIO BASE OFICIAL - PRIMERA FASE
+# CALENDARIO BASE
 # ============================================================
 
 BASE = [
     (1, "2026-10-04", "GRUPO EGIDO BM PINTO 2NF", True),
-
     (2, "2026-10-18", "CB PARLA 2NF", False),
-
     (3, "2026-10-25", "BALONMANO LEGANES 2NF", True),
 
     (
@@ -66,12 +53,8 @@ BASE = [
         False,
     ),
 
-    (
-        5,
-        "2026-11-15",
-        "CAB CONCE 1NF",
-        False,
-    ),
+    # Actualizado segun iSquad
+    (5, "2026-11-15", "CAB CONCE 2NF", False),
 
     (
         6,
@@ -80,12 +63,7 @@ BASE = [
         True,
     ),
 
-    (
-        7,
-        "2026-11-29",
-        "CORAZONISTAS 2NF",
-        False,
-    ),
+    (7, "2026-11-29", "CORAZONISTAS 2NF", False),
 
     (
         8,
@@ -94,12 +72,7 @@ BASE = [
         False,
     ),
 
-    (
-        9,
-        "2027-01-17",
-        "CB PARLA 2NF",
-        True,
-    ),
+    (9, "2027-01-17", "CB PARLA 2NF", True),
 
     (
         10,
@@ -115,12 +88,8 @@ BASE = [
         True,
     ),
 
-    (
-        12,
-        "2027-02-07",
-        "CAB CONCE 1NF",
-        True,
-    ),
+    # Actualizado segun iSquad
+    (12, "2027-02-07", "CAB CONCE 2NF", True),
 
     (
         13,
@@ -129,12 +98,7 @@ BASE = [
         False,
     ),
 
-    (
-        14,
-        "2027-02-21",
-        "CORAZONISTAS 2NF",
-        True,
-    ),
+    (14, "2027-02-21", "CORAZONISTAS 2NF", True),
 ]
 
 
@@ -240,7 +204,7 @@ def html_to_text(raw_html):
 
 
 # ============================================================
-# EXTRAER EL BLOQUE DE GMADRID
+# LOCALIZAR PARTIDO GMADRID
 # ============================================================
 
 def find_gmadrid_block(text):
@@ -257,13 +221,9 @@ def find_gmadrid_block(text):
         if line.strip()
     ]
 
-    for index, line in enumerate(
-        lines
-    ):
+    for index, line in enumerate(lines):
 
-        if TEAM not in norm(
-            line
-        ):
+        if TEAM not in norm(line):
             continue
 
         start = max(
@@ -276,17 +236,96 @@ def find_gmadrid_block(text):
             index + 12,
         )
 
-        block = " ".join(
+        return " ".join(
             lines[start:end]
         )
-
-        return block
 
     return None
 
 
 # ============================================================
-# EXTRAER DATOS DE UNA JORNADA
+# EXTRAER PABELLON AUNQUE NO HAYA HORA
+# ============================================================
+
+def extract_place_without_time(
+    block,
+    rival,
+):
+
+    normalized = norm(
+        block
+    )
+
+    if norm(rival) not in normalized:
+        return ""
+
+    # Buscamos el texto que aparece después de los equipos.
+    # Paramos antes del estado del partido.
+
+    stop_words = [
+        "Pendiente",
+        "Finalizado",
+        "Suspendido",
+        "Aplazado",
+        "No disponible",
+    ]
+
+    cut_position = len(
+        block
+    )
+
+    for word in stop_words:
+
+        match = re.search(
+            re.escape(word),
+            block,
+            re.I,
+        )
+
+        if match:
+
+            cut_position = min(
+                cut_position,
+                match.start(),
+            )
+
+    before_status = block[
+        :cut_position
+    ]
+
+    # Patrones habituales de pabellones en iSquad.
+    patterns = [
+        r"(COL\.\s+[^|]+?\([^)]+\))",
+        r"(PM\s+[^|]+?\([^)]+\))",
+        r"(PABELLON\s+[^|]+?\([^)]+\))",
+        r"(PISTA\s+[^|]+?\([^)]+\))",
+        r"(POLIDEPORTIVO\s+[^|]+?\([^)]+\))",
+        r"(CENTRO DEPORTIVO\s+[^|]+?\([^)]+\))",
+    ]
+
+    for pattern in patterns:
+
+        matches = re.findall(
+            pattern,
+            before_status,
+            re.I,
+        )
+
+        if matches:
+
+            place = matches[-1]
+
+            return re.sub(
+                r"\s+",
+                " ",
+                place,
+            ).strip()
+
+    return ""
+
+
+# ============================================================
+# EXTRAER DATOS
 # ============================================================
 
 def extract_match_data(
@@ -312,7 +351,6 @@ def extract_match_data(
 
         print(
             f"[WARN] J{jornada}: "
-            "GMadrid aparece, pero "
             "el rival no coincide."
         )
 
@@ -322,134 +360,6 @@ def extract_match_data(
         )
 
         return None
-
-    # --------------------------------------------------------
-    # FECHA
-    # --------------------------------------------------------
-
-    date_match = re.search(
-        r"(\d{2}/\d{2}/20(?:26|27))",
-        block,
-    )
-
-    # --------------------------------------------------------
-    # HORA
-    # --------------------------------------------------------
-
-    time_match = re.search(
-        r"\b(\d{1,2}:\d{2})\b",
-        block,
-    )
-
-    if (
-        not date_match
-        or not time_match
-    ):
-
-        print(
-            f"[INFO] J{jornada}: "
-            "partido localizado, "
-            "pero aun sin fecha/hora completa."
-        )
-
-        return None
-
-    match_datetime = datetime.strptime(
-        date_match.group(1)
-        + " "
-        + time_match.group(1),
-        "%d/%m/%Y %H:%M",
-    )
-
-    # --------------------------------------------------------
-    # CONTROL DE FECHA
-    # --------------------------------------------------------
-
-    expected_date = datetime.strptime(
-        base_date,
-        "%Y-%m-%d",
-    ).date()
-
-    difference = abs(
-        (
-            match_datetime.date()
-            - expected_date
-        ).days
-    )
-
-    # Permitimos reprogramaciones amplias.
-    if difference > 60:
-
-        print(
-            f"[WARN] J{jornada}: "
-            "fecha detectada demasiado "
-            "alejada del calendario base."
-        )
-
-        return None
-
-    # --------------------------------------------------------
-    # PABELLON
-    # --------------------------------------------------------
-
-    date_time_match = re.search(
-        r"\d{2}/\d{2}/20(?:26|27)"
-        r"\s*"
-        r"\d{1,2}:\d{2}",
-        block,
-    )
-
-    place = ""
-
-    if date_time_match:
-
-        after = block[
-            date_time_match.end():
-        ].strip()
-
-        stop_words = [
-            "Pendiente",
-            "Finalizado",
-            "Suspendido",
-            "Aplazado",
-            "Previo",
-            "Streaming",
-            "Estad.",
-            "Directo",
-            "Acta",
-            "Cronica",
-            "Crónica",
-            "No disponible",
-        ]
-
-        cut_position = len(
-            after
-        )
-
-        for word in stop_words:
-
-            match = re.search(
-                re.escape(word),
-                after,
-                re.I,
-            )
-
-            if match:
-
-                cut_position = min(
-                    cut_position,
-                    match.start(),
-                )
-
-        place = after[
-            :cut_position
-        ].strip(
-            " -|"
-        )
-
-        if len(place) > 200:
-
-            place = ""
 
     # --------------------------------------------------------
     # ESTADO
@@ -473,6 +383,75 @@ def extract_match_data(
 
             break
 
+    # --------------------------------------------------------
+    # PABELLON
+    # --------------------------------------------------------
+
+    place = extract_place_without_time(
+        block,
+        rival,
+    )
+
+    # --------------------------------------------------------
+    # FECHA Y HORA
+    # --------------------------------------------------------
+
+    date_match = re.search(
+        r"(\d{2}/\d{2}/20(?:26|27))",
+        block,
+    )
+
+    time_match = re.search(
+        r"\b(\d{1,2}:\d{2})\b",
+        block,
+    )
+
+    # Si todavía no hay hora, conservamos igualmente
+    # pabellón y estado.
+    if (
+        not date_match
+        or not time_match
+    ):
+
+        return {
+            "dt": None,
+            "place": place,
+            "status": status,
+        }
+
+    match_datetime = datetime.strptime(
+        date_match.group(1)
+        + " "
+        + time_match.group(1),
+        "%d/%m/%Y %H:%M",
+    )
+
+    expected_date = datetime.strptime(
+        base_date,
+        "%Y-%m-%d",
+    ).date()
+
+    difference = abs(
+        (
+            match_datetime.date()
+            - expected_date
+        ).days
+    )
+
+    if difference > 60:
+
+        print(
+            f"[WARN] J{jornada}: "
+            "fecha demasiado alejada "
+            "del calendario base."
+        )
+
+        return {
+            "dt": None,
+            "place": place,
+            "status": status,
+        }
+
     return {
         "dt": match_datetime,
         "place": place,
@@ -481,12 +460,12 @@ def extract_match_data(
 
 
 # ============================================================
-# CONSULTAR LAS 14 JORNADAS DIRECTAMENTE
+# CONSULTAR JORNADAS 1-14
 # ============================================================
 
 def extract_all_matches():
 
-    live = {}
+    matches = {}
 
     print(
         "[INFO] Consultando directamente "
@@ -505,12 +484,7 @@ def extract_all_matches():
         )
 
         print(
-            f"[JORNADA {jornada}] "
-            "Consultando..."
-        )
-
-        print(
-            f"[URL J{jornada}] {url}"
+            f"[JORNADA {jornada}] Consultando..."
         )
 
         try:
@@ -560,25 +534,30 @@ def extract_all_matches():
 
         if not info:
 
-            print(
-                f"[INFO] J{jornada}: "
-                "sin horario utilizable."
-            )
-
             continue
 
-        live[
+        matches[
             jornada
         ] = info
 
-        print(
-            f"[FOUND] J{jornada}: "
-            f"{info['dt']:%d/%m/%Y %H:%M}"
-            f" | {info['place']}"
-            f" | {info['status']}"
-        )
+        if info["dt"]:
 
-    return live
+            print(
+                f"[FOUND] J{jornada}: "
+                f"{info['dt']:%d/%m/%Y %H:%M}"
+                f" | {info['place']}"
+                f" | {info['status']}"
+            )
+
+        else:
+
+            print(
+                f"[FOUND SIN HORA] J{jornada}: "
+                f"{info['place']}"
+                f" | {info['status']}"
+            )
+
+    return matches
 
 
 # ============================================================
@@ -589,22 +568,10 @@ def escape_ics(text):
 
     return (
         str(text)
-        .replace(
-            "\\",
-            "\\\\",
-        )
-        .replace(
-            ";",
-            "\\;",
-        )
-        .replace(
-            ",",
-            "\\,",
-        )
-        .replace(
-            "\n",
-            "\\n",
-        )
+        .replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\n", "\\n")
     )
 
 
@@ -612,7 +579,7 @@ def escape_ics(text):
 # GENERAR CALENDARIO
 # ============================================================
 
-def generate_calendar(live):
+def generate_calendar(matches):
 
     timestamp = (
         datetime.now(TZ)
@@ -658,7 +625,7 @@ def generate_calendar(live):
         home,
     ) in BASE:
 
-        info = live.get(
+        info = matches.get(
             jornada
         )
 
@@ -685,9 +652,6 @@ def generate_calendar(live):
 
             default_place = ""
 
-        # MUY IMPORTANTE:
-        # UID FIJO PARA QUE GOOGLE ACTUALICE
-        # EL MISMO EVENTO.
         uid = (
             "gmadrid-ellas-2627-"
             f"j{jornada}@gmadridsports"
@@ -716,16 +680,12 @@ def generate_calendar(live):
 
         output += [
             "BEGIN:VEVENT",
-
             f"UID:{uid}",
-
             f"DTSTAMP:{timestamp}",
-
             (
                 "SUMMARY:"
                 f"{escape_ics(title)}"
             ),
-
             (
                 "DESCRIPTION:"
                 f"{escape_ics(description)}"
@@ -733,10 +693,13 @@ def generate_calendar(live):
         ]
 
         # ====================================================
-        # HORARIO PUBLICADO
+        # HORA PUBLICADA
         # ====================================================
 
-        if info:
+        if (
+            info
+            and info.get("dt")
+        ):
 
             start = info[
                 "dt"
@@ -751,7 +714,7 @@ def generate_calendar(live):
             )
 
             location = (
-                info["place"]
+                info.get("place")
                 or default_place
             )
 
@@ -761,7 +724,6 @@ def generate_calendar(live):
                     "TZID=Europe/Madrid:"
                     f"{start:%Y%m%dT%H%M%S}"
                 ),
-
                 (
                     "DTEND;"
                     "TZID=Europe/Madrid:"
@@ -801,7 +763,7 @@ def generate_calendar(live):
             )
 
         # ====================================================
-        # TODAVIA SIN HORARIO
+        # TODAVIA SIN HORA
         # ====================================================
 
         else:
@@ -823,19 +785,36 @@ def generate_calendar(live):
                     "DTSTART;VALUE=DATE:"
                     f"{date:%Y%m%d}"
                 ),
-
                 (
                     "DTEND;VALUE=DATE:"
                     f"{next_date:%Y%m%d}"
                 ),
             ]
 
-            if default_place:
+            # Prioridad:
+            # pabellon publicado en iSquad
+            # > pabellon local conocido
+            location = ""
+
+            if info:
+
+                location = (
+                    info.get("place")
+                    or ""
+                )
+
+            if not location:
+
+                location = (
+                    default_place
+                )
+
+            if location:
 
                 output.append(
                     "LOCATION:"
                     + escape_ics(
-                        default_place
+                        location
                     )
                 )
 
@@ -868,21 +847,21 @@ def main():
 
     try:
 
-        live = extract_all_matches()
+        matches = extract_all_matches()
 
         # ====================================================
         # CONTROL DE SEGURIDAD
         # ====================================================
-        #
-        # Sabemos que J1 existe y tiene horario.
-        # Si deja de aparecer, NO tocamos el calendario.
-        # ====================================================
 
-        if 1 not in live:
+        if (
+            1 not in matches
+            or not matches[1].get("dt")
+        ):
 
             print(
                 "[ERROR] CONTROL DE SEGURIDAD: "
-                "no se ha podido leer la J1.",
+                "no se ha podido leer "
+                "correctamente la J1.",
                 file=sys.stderr,
             )
 
@@ -899,18 +878,41 @@ def main():
 
         print(
             f"[CONTROL OK] "
-            f"{live[1]['dt']:%d/%m/%Y %H:%M}"
+            f"{matches[1]['dt']:%d/%m/%Y %H:%M}"
         )
 
-        print(
-            "[INFO] Partidos con horario "
-            f"detectados: {len(live)}"
-        )
+        with_time = [
+            jornada
+            for jornada, info
+            in matches.items()
+            if info.get("dt")
+        ]
+
+        with_place = [
+            jornada
+            for jornada, info
+            in matches.items()
+            if info.get("place")
+        ]
 
         print(
-            "[INFO] Jornadas detectadas:",
+            "[INFO] Jornadas localizadas:",
             sorted(
-                live.keys()
+                matches.keys()
+            ),
+        )
+
+        print(
+            "[INFO] Jornadas con horario:",
+            sorted(
+                with_time
+            ),
+        )
+
+        print(
+            "[INFO] Jornadas con pabellon:",
+            sorted(
+                with_place
             ),
         )
 
@@ -919,7 +921,7 @@ def main():
         # ====================================================
 
         calendar = generate_calendar(
-            live
+            matches
         )
 
         ICS_FILE.write_text(
